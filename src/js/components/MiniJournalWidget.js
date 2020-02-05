@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import {Link} from 'react-router';
 var AppConstants = require('constants/AppConstants');
 var MobileDialog = require('components/common/MobileDialog');
-import { Dialog, TextField, IconMenu,
+import { TextField, IconMenu,
   FlatButton, RaisedButton, IconButton, FontIcon,
   DropDownMenu,
   MenuItem } from 'material-ui';
@@ -21,13 +21,15 @@ export default class MiniJournalWidget extends React.Component {
     tomorrow_top_tasks: PropTypes.bool,
     questions: PropTypes.array,
     window_start_hr: PropTypes.number,
-    window_end_hr: PropTypes.number
+    window_end_hr: PropTypes.number,
+    journal_notification: PropTypes.bool
   }
 
   static defaultProps = {
     questions: [],
     include_location: true,
-    tomorrow_top_tasks: true
+    tomorrow_top_tasks: true,
+    journal_notification: false
   }
 
   constructor(props) {
@@ -109,12 +111,16 @@ export default class MiniJournalWidget extends React.Component {
   }
 
   should_notify() {
+    let {open} = this.state
     let d = new Date();
-    return !this.submitted() && d.getMinutes() <= this.NOTIFY_CHECK_MINS && this.in_journal_window()
+    let notification_enabled = this.props.journal_notification
+    return (notification_enabled && !open && !this.submitted() &&
+      d.getMinutes() <= this.NOTIFY_CHECK_MINS && this.in_journal_window())
   }
 
   maybe_check_if_not_submitted() {
-    if (this.in_journal_window()) {
+    let {open} = this.state
+    if (this.in_journal_window() && !open) {
       this.check_if_not_submitted();
     }
   }
@@ -312,7 +318,7 @@ export default class MiniJournalWidget extends React.Component {
       <FlatButton label="Dismiss" onClick={this.dismiss.bind(this)} />
     ]
     let submitted = this.submitted()
-    let _cta = in_window ? <small><div><a href="javascript:void(0)" onClick={this.open_journal_dialog.bind(this)}>{ submitted ? "Update journal" : "Fill journal" }</a></div></small> : <small><div>You can submit at {this.props.window_start_hr}:00. <Link to="/app/settings">Configure journal timing</Link>.</div></small>;
+    let _cta = in_window ? <small><div><a href="javascript:void(0)" onClick={this.open_journal_dialog.bind(this)}>{ submitted ? "Update journal" : "Fill journal" }</a></div></small> : <small><div>You can submit at {this.props.window_start_hr}:00. <Link to="/app/settings#journals">Configure journal timing</Link>.</div></small>;
     let _status = (
       <p className="lead">{ submitted ? `Journal submitted for ${submitted_date}, but you can still make edits` : "Journal not yet submitted" }. { _cta }</p>
     )

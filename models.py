@@ -617,6 +617,13 @@ class Habit(ndb.Model):
         if 'tgt_daily' in params:
             self.tgt_daily = params.get('tgt_daily')
 
+    def delete_history(self):
+        """
+        Start a background task to delete all linked HabitDays
+        """
+        from tasks import backgroundHabitDayDeletion
+        tools.safe_add_task(backgroundHabitDayDeletion, self.key.urlsafe(), _queue="background-deletion-queue")
+
 
 class HabitDay(ndb.Model):
     """
@@ -640,6 +647,12 @@ class HabitDay(ndb.Model):
             'committed': self.committed,
             'count': self.get_count()
         }
+
+    @staticmethod
+    def All(habit_key, limit=100, keys_only=True):
+        user_key = habit_key.parent()
+        return HabitDay.query(ancestor=user_key).filter(HabitDay.habit == habit_key) \
+            .fetch(limit=limit, keys_only=keys_only)
 
     @staticmethod
     def Range(user, habits, since_date, until_date=None):
@@ -847,14 +860,17 @@ class MiniJournal(ndb.Model):
     @staticmethod
     def Get(user, date=None):
         if not date:
-            date = MiniJournal.CurrentSubmissionDate()
+            date = MiniJournal.CurrentSubmissionDate(user=user)
         id = tools.iso_date(date)
         return MiniJournal.get_by_id(id, parent=user.key)
 
     @staticmethod
-    def CurrentSubmissionDate():
+    def CurrentSubmissionDate(user=None):
         HOURS_BACK = JOURNAL.HOURS_BACK
-        now = datetime.now()
+        if user:
+            now = user.local_time()
+        else:
+            now = datetime.now()
         return (now - timedelta(hours=HOURS_BACK)).date()
 
     def Update(self, **params):
